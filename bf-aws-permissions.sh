@@ -106,7 +106,7 @@ test_command() {
 
     if [ $? -eq 0 ]; then
         echo ""
-        echo "[+] You have permissions to execute: aws $service $command"
+        echo "[+] You have permissions to execute: aws --profile $profile $service $command"
         echo ""
     fi
 }
