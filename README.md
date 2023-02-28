@@ -6,6 +6,9 @@ This can have false negatives, but it's the **easiest approach to check want you
 - You might be able to run a command that needs another extra param and that will be a false negative
 - You might be able to have permissions over not `list*`, `describe*`, `get*` commands and that will be a false negative
 
+**Improvements TODO**
+- *Some actions just require names or ARNs in 1 or more params, so putting random data it could be checked if the error says that the user doesn't have permission to that random data or that the data just doesn't exist but the user could have access* 
+
 ## Quick start
 ```bash
 bash bf-aws-permissions.sh -p "<profile-name>"

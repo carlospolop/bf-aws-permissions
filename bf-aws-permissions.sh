@@ -113,9 +113,10 @@ test_command() {
 
 
 # BFS through the AWS services and get-list-describe 
-for service in $(get_aws_services); do
+#for service in $(get_aws_services); do
+    service="ssm"
     for svc_command in $(get_commands_for_service "$service"); do
         test_command "$service" "$svc_command" &
     done
     wait
-done
+#done
