@@ -14,6 +14,7 @@ trap handle_sigint SIGINT
 
 # Set default values for the options
 profile="default"
+verbose=0
 
 HELP_MESSAGE="Usage: $0 [-p profile] \n"\
 "Set the region in the profile you want to test."
@@ -45,27 +46,26 @@ done
 
 # Read the file line by line
 get_aws_services(){
-    # Set the start and end strings
-    start_string="AVAILABLE SERVICES"
-    end_string="SEE ALSO"
+    	# Set the start and end strings
+    	start_string="SERVICES"
+	end_string="SEE"
+	point="o"
+	in_range=false
 
-    # Set a flag to track if we're in the target range
-    in_range=false
+	for line in $(aws help | col -b); do
+		if [[ "$start_string" == *"$line"* ]]; then
+			# Found the start string
+			in_range=true
+		elif [[ "$end_string" == *"$line"* ]]; then
+			# Found the end string
+			in_range=false
+		fi
 
-    aws help | while read line; do
-        if [[ "$line" == *"$start_string"* ]]; then
-            # Found the start string
-            in_range=true
-        elif [[ "$line" == *"$end_string"* ]]; then
-            # Found the end string
-            in_range=false
-        fi
-
-        if [ "$in_range" == true ] && [ "$line" ] && echo "$line" | grep -qv "AVAILABLE SERVICES"; then
-            # We're in the target range, so echo the line
-            echo "$line" | awk '{print $2}'
-        fi
-    done
+		if [[ $in_range == true ]] && [[ "$line" != *"$point"* ]] && echo "$line" | grep -qv "SERVICES"; then
+			# We're in the target range, so echo the line
+			echo $line
+		fi
+	done
 }
 
 
@@ -74,24 +74,24 @@ get_commands_for_service() {
     service=$1
     
     # Set the start and end strings
-    start_string="AVAILABLE COMMANDS"
-    end_string="SEE ALSO"
+    start_string="COMMANDS"
+    end_string="SEE"
 
     # Set a flag to track if we're in the target range
     in_range=false
-
-    aws "$service" help | while read line; do
-        if [[ "$line" == *"$start_string"* ]]; then
+    for line in $(aws "$service" help | col -b); do
+        #echo $line
+        if [[ "$start_string" == *"$line"* ]]; then
             # Found the start string
             in_range=true
-        elif [[ "$line" == *"$end_string"* ]]; then
+        elif [[ "$end_string" == *"$line"* ]]; then
             # Found the end string
             in_range=false
         fi
 
-        if [ "$in_range" == true ] && [ "$line" ] && echo "$line" | awk '{print $2}' | grep -Eq "^list|^describe|^get"; then
+        if [ "$in_range" == true ] && [ "$line" ] && echo "$line" | grep -Eq "^list|^describe|^get"; then
             # We're in the target range, so echo the line
-            echo $line | awk '{print $2}' | sort -u
+            echo $line
         fi
     done
 }
@@ -103,11 +103,11 @@ test_command() {
     echo -ne "Testing: aws --profile \"$profile\" $service $command                              \r"
 
     aws --cli-connect-timeout 20 --profile "$profile" "$service" "$command" >/dev/null 2>&1
-
+    
+    # for extended ouput use --> aws --cli-connect-timeout 20 --profile "$profile" "$service" "$command" 2>/dev/null
+       
     if [ $? -eq 0 ]; then
-        echo ""
         echo "[+] You have permissions to execute: aws --profile $profile $service $command"
-        echo ""
     fi
 }
 
