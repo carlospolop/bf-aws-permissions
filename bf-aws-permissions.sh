@@ -96,6 +96,7 @@ get_commands_for_service() {
     done
 }
 
+# Test aws command
 test_command() {
     service=$1
     command=$2
