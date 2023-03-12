@@ -46,17 +46,17 @@ done
 
 # Read the file line by line
 get_aws_services(){
-    	# Set the start and end strings
-    	start_string="SERVICES"
+  # Set the start and end strings
+  start_string="SERVICES"
 	end_string="SEE"
 	point="o"
 	in_range=false
 
 	for line in $(aws help | col -b); do
-		if [[ "$start_string" == *"$line"* ]]; then
+		if echo "$line" | grep -q "$start_string"; then
 			# Found the start string
 			in_range=true
-		elif [[ "$end_string" == *"$line"* ]]; then
+		elif echo "$line" | grep -q "$end_string"; then
 			# Found the end string
 			in_range=false
 		fi
@@ -81,10 +81,10 @@ get_commands_for_service() {
     in_range=false
     for line in $(aws "$service" help | col -b); do
         #echo $line
-        if [[ "$start_string" == *"$line"* ]]; then
+        if echo "$line" | grep -q "$start_string"; then
             # Found the start string
             in_range=true
-        elif [[ "$end_string" == *"$line"* ]]; then
+        elif echo "$line" | grep -q "$end_string"; then
             # Found the end string
             in_range=false
         fi
