@@ -53,15 +53,15 @@ get_aws_services(){
 	in_range=false
 
 	for line in $(aws help | col -b); do
-		if echo "$line" | grep -q "$start_string"; then
+		if echo "$line" | grep -a -q "$start_string"; then
 			# Found the start string
 			in_range=true
-		elif echo "$line" | grep -q "$end_string"; then
+		elif echo "$line" | grep -a -q "$end_string"; then
 			# Found the end string
 			in_range=false
 		fi
 
-		if [[ $in_range == true ]] && [[ "$line" != *"$point"* ]] && echo "$line" | grep -qv "SERVICES"; then
+		if [[ $in_range == true ]] && [[ "$line" != *"$point"* ]] && echo "$line" | grep -aqv "SERVICES"; then
 			# We're in the target range, so echo the line
 			echo $line
 		fi
@@ -81,10 +81,10 @@ get_commands_for_service() {
     in_range=false
     for line in $(aws "$service" help | col -b); do
         #echo $line
-        if echo "$line" | grep -q "$start_string"; then
+        if echo "$line" | grep -a -q "$start_string"; then
             # Found the start string
             in_range=true
-        elif echo "$line" | grep -q "$end_string"; then
+        elif echo "$line" | grep -a -q "$end_string"; then
             # Found the end string
             in_range=false
         fi
