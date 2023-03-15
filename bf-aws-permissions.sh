@@ -16,11 +16,11 @@ trap handle_sigint SIGINT
 profile="default"
 verbose=0
 
-HELP_MESSAGE="Usage: $0 [-p profile] \n"\
+HELP_MESSAGE="Usage: $0 [-p profile] [-v]\n"\
 "Set the region in the profile you want to test."
 
 # Parse the command-line options
-while getopts ":p:h" opt; do
+while getopts ":p:hv" opt; do
   case ${opt} in
     h )
       echo -e "$HELP_MESSAGE"
@@ -28,6 +28,9 @@ while getopts ":p:h" opt; do
       ;;
     p )
       profile=$OPTARG
+      ;;
+    v )
+      verbose="1"
       ;;
     \? )
       echo "Invalid option: -$OPTARG" 1>&2
@@ -98,18 +101,20 @@ get_commands_for_service() {
 
 # Test aws command
 test_command() {
-    service=$1
-    command=$2
+  service=$1
+  command=$2
 
-    echo -ne "Testing: aws --profile \"$profile\" $service $command                              \r"
+  echo -ne "Testing: aws --profile \"$profile\" $service $command                              \r"
 
-    aws --cli-connect-timeout 20 --profile "$profile" "$service" "$command" >/dev/null 2>&1
-    
-    # for extended ouput use --> aws --cli-connect-timeout 20 --profile "$profile" "$service" "$command" 2>/dev/null
-       
-    if [ $? -eq 0 ]; then
-        echo "[+] You have permissions to execute: aws --profile $profile $service $command"
-    fi
+  if [ "$verbose" ]; then
+    timeout 20 aws --cli-connect-timeout 19 --profile "$profile" "$service" "$command" 2>/dev/null
+  else
+    timeout 20 aws --cli-connect-timeout 19 --profile "$profile" "$service" "$command" >/dev/null 2>&1
+  fi
+        
+  if [ $? -eq 0 ]; then
+      echo "[+] You have permissions to execute: aws --profile $profile $service $command"
+  fi
 }
 
 
