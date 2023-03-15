@@ -15,12 +15,15 @@ trap handle_sigint SIGINT
 # Set default values for the options
 profile="default"
 verbose=""
+service=""
 
-HELP_MESSAGE="Usage: $0 [-p profile] [-v]\n"\
-"Set the region in the profile you want to test."
+HELP_MESSAGE="Usage: $0 [-p profile] [-v] [-s <service>]\n"\
+"-v for Verbose: Get the output of working commands\n"\
+"-s SERVICE: Only BF this service\n"\
+"IMPORTANT: Set the region in the profile you want to test."
 
 # Parse the command-line options
-while getopts ":p:hv" opt; do
+while getopts ":p:hvs:" opt; do
   case ${opt} in
     h )
       echo -e "$HELP_MESSAGE"
@@ -31,6 +34,9 @@ while getopts ":p:hv" opt; do
       ;;
     v )
       verbose="1"
+      ;;
+    s )
+      service=$OPTARG
       ;;
     \? )
       echo "Invalid option: -$OPTARG" 1>&2
@@ -65,8 +71,17 @@ get_aws_services(){
 		fi
 
 		if [[ $in_range == true ]] && [[ "$line" != *"$point"* ]] && echo "$line" | grep -aqv "SERVICES"; then
-			# We're in the target range, so echo the line
-			echo $line
+      # We're in the target range, so echo the line
+      
+      if [ "$service" ]; then
+        if echo "$line" | grep -qi "$service"; then
+          echo $line
+        fi
+      
+      else
+        echo $line
+      fi
+			
 		fi
 	done
 }
