@@ -14,7 +14,7 @@ trap handle_sigint SIGINT
 
 # Set default values for the options
 profile="default"
-verbose=0
+verbose=""
 
 HELP_MESSAGE="Usage: $0 [-p profile] [-v]\n"\
 "Set the region in the profile you want to test."
@@ -122,6 +122,6 @@ test_command() {
 for service in $(get_aws_services); do
     for svc_command in $(get_commands_for_service "$service"); do
         test_command "$service" "$svc_command" &
+        sleep 0.15
     done
-    wait
 done
