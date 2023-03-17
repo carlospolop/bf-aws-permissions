@@ -114,21 +114,55 @@ get_commands_for_service() {
     done
 }
 
-# Test aws command
+trim_string_to_fit_line() {
+  input_string="$1"
+  terminal_width=$(tput cols)
+
+  if [ ${#input_string} -gt $terminal_width ]; then
+    truncated_string="${input_string:0:$terminal_width}"
+  else
+    truncated_string="$input_string"
+  fi
+
+  echo -n "$truncated_string"
+}
+
 test_command() {
   service=$1
   command=$2
+  extra=$3
 
-  echo -ne "Testing: aws --profile \"$profile\" $service $command                              \r"
+  echo -ne "\033[2K\r" # Clean previous echo
+  testing_cmd=$(trim_string_to_fit_line "Testing: aws --profile $profile $service $command $extra")
+  echo -ne "$testing_cmd\r"
 
-  if [ "$verbose" ]; then
-    timeout 20 aws --cli-connect-timeout 19 --profile "$profile" "$service" "$command" 2>/dev/null
-  else
-    timeout 20 aws --cli-connect-timeout 19 --profile "$profile" "$service" "$command" >/dev/null 2>&1
-  fi
-        
+  output=$(timeout 20 aws --cli-connect-timeout 19 --profile $profile $service $command $extra 2>&1)
+
   if [ $? -eq 0 ]; then
-      echo "[+] You have permissions to execute: aws --profile $profile $service $command"
+    echo "[+] You have permissions to execute: aws --profile $profile $service $command $extra"
+    if [ "$verbose" ]; then
+      echo "$output"
+    fi
+  
+  # Check if 1 argument is required
+  elif echo "$output" | grep -q 'arguments are required'; then
+    required_arg=$(echo "$output" | grep -E -o 'arguments are required: [^[:space:],]+' | awk '{print $NF}')
+    
+    if [ "$required_arg" ]; then
+      random_string="arn:aws:iam::112233445566:role/OrganizationAccountAccessRole"
+      extra="$extra $required_arg $random_string"
+      test_command "$service" "$command" "$extra"
+    fi
+  
+  elif echo "$output" | grep -qi 'no identity-based policy allows'; then
+    return
+  
+  # If no access denied, you have permissions
+  elif echo "$output" | grep -qi 'AccessDeniedException'; then
+    echo "[+] You migh have permissions for: $service $command (aws --profile $profile $service $command $extra)"
+    if [ "$verbose" ]; then
+      echo "$output"
+    fi
   fi
 }
 
@@ -140,3 +174,4 @@ for service in $(get_aws_services); do
         sleep 0.15
     done
 done
+echo -ne "\033[2K\r"
