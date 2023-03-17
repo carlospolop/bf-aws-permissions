@@ -227,4 +227,4 @@ wait
 echo -ne "\033[2K\r"
 echo ""
 echo -e "${YELLOW}[+]${GREEN} Summary of permissions in ${CYAN}$file_path${RESET}"
-echo "
+echo ""
