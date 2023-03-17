@@ -68,6 +68,132 @@ if ! [ "$account_id" ]; then
 fi
 
 
+
+
+
+
+
+##########################
+###### QUERING IAM #######
+##########################
+
+caller_identity=$(aws --profile "$profile" sts get-caller-identity)
+
+# Check if the current profile is a user or a role
+if echo "$caller_identity" | grep -q "assumed-role"; then
+  entity_type="role"
+  entity_name=$(echo "$caller_identity" | jq -r '.Arn' | awk -F '/' '{print $2}')
+else
+  entity_type="user"
+  entity_name=$(echo "$caller_identity" | jq -r '.Arn' | awk -F '/' '{print $NF}')
+fi
+
+echo -e "${YELLOW}Entity Type:${RESET} $entity_type"
+echo -e "${YELLOW}Entity Name:${RESET} $entity_name"
+
+# Get attached policies
+echo -e "${YELLOW}Attached Policies${RESET}"
+attached_policies=$(aws --profile "$profile" iam "list-attached-${entity_type}-policies" --"${entity_type}-name" "$entity_name" | jq -r '.AttachedPolicies[] | .PolicyName + " " + .PolicyArn')
+echo "$attached_policies"
+echo "====================="
+echo ""
+
+# Get policy documents for attached policies
+printf "$attached_policies" | while read -r policy; do
+  policy_name=$(echo "$policy" | cut -d ' ' -f1)
+  policy_arn=$(echo "$policy" | cut -d ' ' -f2)
+  version_id=$(aws --profile $profile iam get-policy --policy-arn $policy_arn | jq -r '.Policy.DefaultVersionId')
+  policy_document=$(aws --profile "$profile" iam get-policy-version --policy-arn "$policy_arn" --version-id "$version_id")
+  
+  if [ $? -eq 0 ]; then
+    echo -e "  ${GREEN}Policy Name:${RESET} $policy_name"
+    echo -e "  ${GREEN}Policy Document:${RESET}"
+    echo "$policy_document" | jq '.PolicyVersion.Document'
+    echo "---------------------"
+  fi
+done
+echo ""
+
+
+# Get inline policies
+echo -e "${YELLOW}Inline Policies${RESET}"
+inline_policies=$(aws --profile "$profile" iam "list-${entity_type}-policies" --"${entity_type}-name" "$entity_name" | jq -r '.PolicyNames[]')
+echo "$inline_policies"
+echo "====================="
+echo ""
+
+# Get policy documents for inline policies
+printf "$inline_policies" | while read -r policy; do
+  policy_document=$(aws --profile "$profile" iam "get-${entity_type}-policy" --"${entity_type}-name" "$entity_name" --policy-name "$policy")
+  if [ $? -eq 0 ]; then
+    echo -e "  ${GREEN}Policy Name:${RESET} $policy"
+    echo -e "  ${GREEN}Policy Document:${RESET}"
+    echo "$policy_document" | jq '.PolicyDocument'
+    echo "---------------------"
+  fi
+done
+echo ""
+
+
+if [ "$entity_type" == "user" ]; then
+  # Get the groups the user belongs to
+  groups=$(aws --profile "$profile" iam list-groups-for-user --user-name "$entity_name" | jq -r '.Groups[].GroupName')
+  echo -e "${YELLOW}Groups${RESET}"
+  echo "$groups"
+
+
+  # Get the policies attached to the groups
+  printf "$groups" | while read -r group; do
+    echo -e "  ${GREEN}Group:${RESET} $group"
+    group_attached_policies=$(aws --profile "$profile" iam list-attached-group-policies --group-name "$group" | jq -r '.AttachedPolicies[] | .PolicyName + " " + .PolicyArn')
+    echo -e "  ${YELLOW}Attached Policies:${RESET}"
+    echo "$group_attached_policies"
+
+    # Get policy documents for attached group policies
+    printf "$group_attached_policies" | while read -r policy; do
+      policy_name=$(echo "$policy" | cut -d ' ' -f1)
+      policy_arn=$(echo "$policy" | cut -d ' ' -f2)
+      policy_document=$(aws --profile "$profile" iam get-policy-version --policy-arn "$policy_arn" --version-id "$(aws --profile "$profile" iam get-policy --policy-arn "$policy_arn" | jq -r '.Policy.DefaultVersionId')")
+      if [ $? -eq 0 ]; then
+        echo -e "    ${GREEN}Policy Name:${RESET} $policy_name"
+        echo -e "    ${GREEN}Policy Document:${RESET}"
+        echo "$policy_document" | jq '.PolicyVersion.Document'
+        echo "---------------------"
+      fi
+    done
+
+    # Get inline policies of the groups
+    group_inline_policies=$(aws --profile "$profile" iam list-group-policies --group-name "$group" | jq -r '.PolicyNames[]')
+    echo -e "${YELLOW}Inline Policies:${RESET}"
+    echo "$group_inline_policies"
+
+    # Get policy documents for inline group policies
+    for policy in $group_inline_policies; do
+      policy_document=$(aws --profile "$profile" iam get-group-policy --group-name "$group" --policy-name "$policy")
+      if [ $? -eq 0 ]; then
+        echo "${GREEN}Policy Name:${RESET} $policy"
+        echo "${GREEN}Policy Document:${RESET}"
+        echo "$policy_document" | jq '.PolicyDocument'
+        echo "---------------------"
+      fi
+    done
+  done
+fi
+
+echo ""
+
+
+# Check for Brute Forcing
+read -p "Do you want to continue with brute-forcing? (y/N): " user_choice
+if [[ ! "$user_choice" =~ ^[Yy]$ ]]; then
+    echo "Aborting brute-forcing."
+    exit 0
+fi
+
+##########################
+##### BRUTE FORCING ######
+##########################
+
 # Read the file line by line
 get_aws_services(){
   # Set the start and end strings
@@ -197,7 +323,7 @@ test_command() {
   # If NoSuchEntity, you have permissions
   elif echo "$output" | grep -qi 'NoSuchEntity'; then
     echo -e "${YELLOW}[+]${RESET} You have permissions for: ${GREEN}$service $command ${BLUE}(aws --profile $profile $service $command $extra)${RESET}"
-    echo "$service $command (might)" >> $file_path
+    echo "$service $command" >> $file_path
     if [ "$verbose" ]; then
       echo "$output"
     fi

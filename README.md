@@ -1,5 +1,7 @@
 # Brute Force AWS Permissions
 
+The script will first try to **enumerate your permissions querying the IAM service**, and then give you the options to brute force permissions.
+
 The script `bf-aws-permissions.sh` will try to run all the `list*`, `describe*`, `get*` commands from all the aws services it can discover using the CLI and **indicate the ones that worked**.
 
 This can have false negatives, but it's the **easiest approach to check want you can enumerate** without needing to code each possible action independently, and it won't have false positives:
