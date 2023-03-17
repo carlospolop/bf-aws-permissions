@@ -223,6 +223,7 @@ for service in $(get_aws_services); do
     done
 done
 
+wait
 echo -ne "\033[2K\r"
 echo ""
 echo -e "${YELLOW}[+]${GREEN} Summary of permissions in ${CYAN}$file_path${RESET}"
