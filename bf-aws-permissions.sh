@@ -292,7 +292,8 @@ test_command() {
   output=$(timeout 20 aws --cli-connect-timeout 19 --profile $profile $service $command $extra 2>&1)
 
   if [ $? -eq 0 ]; then
-    echo -e "${YELLOW}[+]${RESET} You have permissions for: ${GREEN}$service $command ${BLUE}(aws --profile $profile $service $command $extra)${RESET}"
+
+    echo -e "\033[2K\r${YELLOW}[+]${RESET} You have permissions for: ${GREEN}$service $command ${BLUE}(aws --profile $profile $service $command $extra)${RESET}"
     echo "$service $command" >> $file_path
     if [ "$verbose" ]; then
       echo "$output"
@@ -322,7 +323,7 @@ test_command() {
   
   # If NoSuchEntity, you have permissions
   elif echo "$output" | grep -qi 'NoSuchEntity'; then
-    echo -e "${YELLOW}[+]${RESET} You have permissions for: ${GREEN}$service $command ${BLUE}(aws --profile $profile $service $command $extra)${RESET}"
+    echo -e "\033[2K\r${YELLOW}[+]${RESET} You have permissions for: ${GREEN}$service $command ${BLUE}(aws --profile $profile $service $command $extra)${RESET}"
     echo "$service $command" >> $file_path
     if [ "$verbose" ]; then
       echo "$output"
