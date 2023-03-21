@@ -27,6 +27,7 @@ verbose=""
 service=""
 
 HELP_MESSAGE="Usage: $0 [-p profile] [-v] [-s <service>]\n"\
+"-p PROFILE: Use the specified profile\n"\
 "-v for Verbose: Get the output of working commands\n"\
 "-s SERVICE: Only BF this service\n"\
 "IMPORTANT: Set the region in the profile you want to test."
@@ -180,6 +181,32 @@ if [ "$entity_type" == "user" ]; then
   done
 fi
 
+echo ""
+
+
+# Check for simulate permissions
+echo -e "${YELLOW}Checking for simulate permissions...${RESET}"
+
+CURRENT_ARN=$(aws sts get-caller-identity --query "Arn" --output text --profile $profile)
+
+if echo $CURRENT_ARN | grep -q "assumed-role"; then
+  CURRENT_ARN=${CURRENT_ARN//:sts::/:iam::}
+  CURRENT_ARN=${CURRENT_ARN//:assumed-role/:role}
+  CURRENT_ARN=${CURRENT_ARN%/*}
+fi
+
+echo "arn: $CURRENT_ARN"
+
+aws iam simulate-principal-policy \
+    --policy-source-arn "$CURRENT_ARN" \
+    --action-names codecommit:SimulatePrincipalPolicy
+  
+if [ $? -eq 0 ]; then
+  echo -e "${GREEN}You have simulate permissions!${RESET} Check: ${BLUE}https://github.com/carlospolop/bf-aws-perms-simulate${RESET}"
+else
+  echo -e "${RED}You don't have simulate permissions!${RESET}"
+fi
+echo ""
 echo ""
 
 
