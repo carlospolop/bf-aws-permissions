@@ -26,16 +26,18 @@ profile=""
 region=""
 verbose=""
 service=""
+sleep_time="0.3"
 
 HELP_MESSAGE="Usage: $0 [-p profile] [-v] [-s <service>]\n"\
 "-p PROFILE: Specify the profile to use (required)\n"\
 "-r REGION: Specify a region, if you have no clue use 'us-east-1' (required)\n"\
 "-v for Verbose: Get the output of working commands\n"\
 "-s SERVICE: Only BF this service\n"\
+"-t SLEEP_TIME: Time to sleep between each BF attempt (default: 0.3)\n"\
 "IMPORTANT: Set the region in the profile you want to test."
 
 # Parse the command-line options
-while getopts ":p:hvs:r:" opt; do
+while getopts ":p:hvs:r:t:" opt; do
   case ${opt} in
     h )
       echo -e "$HELP_MESSAGE"
@@ -52,6 +54,9 @@ while getopts ":p:hvs:r:" opt; do
       ;;
     s )
       service=$OPTARG
+      ;;
+    t )
+      sleep_time=$OPTARG
       ;;
     \? )
       echo "Invalid option: -$OPTARG" 1>&2
@@ -381,7 +386,7 @@ test_command() {
 for service in $(get_aws_services); do
     for svc_command in $(get_commands_for_service "$service"); do
         test_command "$service" "$svc_command" &
-        sleep 0.2
+        sleep $sleep_time
     done
 done
 
