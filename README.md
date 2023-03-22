@@ -14,7 +14,7 @@ This can have false negatives, but it's the **easiest approach to check want you
 ## Quick start
 ```bash
 # Remember to set the region in the profile
-bash bf-aws-permissions.sh -p "<profile-name>"
+bash bf-aws-permissions.sh -p "<profile-name>" -r <region>
 # BF only the 10 services most used according to GPT4
-bash bf-aws-permissions.sh -p "<profile-name>" -s 's3|ec2|lambda|rds|sns|sqs|cloudwatch|cloudfront|iam|dynamodb'
+bash bf-aws-permissions.sh -p "<profile-name>" -r us-east-1 -s 's3|ec2|lambda|rds|sns|sqs|cloudwatch|cloudfront|iam|dynamodb'
 ```

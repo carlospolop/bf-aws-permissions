@@ -22,18 +22,20 @@ trap handle_sigint SIGINT
 
 
 # Set default values for the options
-profile="default"
+profile=""
+region=""
 verbose=""
 service=""
 
 HELP_MESSAGE="Usage: $0 [-p profile] [-v] [-s <service>]\n"\
-"-p PROFILE: Use the specified profile\n"\
+"-p PROFILE: Specify the profile to use (required)\n"\
+"-r REGION: Specify a region, if you have no clue use 'us-east-1' (required)\n"\
 "-v for Verbose: Get the output of working commands\n"\
 "-s SERVICE: Only BF this service\n"\
 "IMPORTANT: Set the region in the profile you want to test."
 
 # Parse the command-line options
-while getopts ":p:hvs:" opt; do
+while getopts ":p:hvs:r:" opt; do
   case ${opt} in
     h )
       echo -e "$HELP_MESSAGE"
@@ -41,6 +43,9 @@ while getopts ":p:hvs:" opt; do
       ;;
     p )
       profile=$OPTARG
+      ;;
+    r )
+      region=$OPTARG
       ;;
     v )
       verbose="1"
@@ -61,24 +66,27 @@ while getopts ":p:hvs:" opt; do
   esac
 done
 
+
+if [ -z "$profile" ] || [ -z "$region" ]; then
+    echo -e "${RED}Both profile and region are required.${RESET}"
+    echo ""
+    echo -e "$HELP_MESSAGE"
+    exit 1
+fi
+
+# Some extra configs
 file_path="/tmp/$profile-aws-permissions.txt"
 rm $file_path 2>/dev/null
-account_id=$(aws sts get-caller-identity --query 'Account' --output text --profile $profile)
+account_id=$(aws sts get-caller-identity --query 'Account' --output text --profile $profile --region $region)
 if ! [ "$account_id" ]; then
   account_id="112233445566"
 fi
-
-
-
-
-
-
 
 ##########################
 ###### QUERING IAM #######
 ##########################
 
-caller_identity=$(aws --profile "$profile" sts get-caller-identity)
+caller_identity=$(aws --profile "$profile" --region $region sts get-caller-identity)
 
 # Check if the current profile is a user or a role
 if echo "$caller_identity" | grep -q "assumed-role"; then
@@ -94,7 +102,7 @@ echo -e "${YELLOW}Entity Name:${RESET} $entity_name"
 
 # Get attached policies
 echo -e "${YELLOW}Attached Policies${RESET}"
-attached_policies=$(aws --profile "$profile" iam "list-attached-${entity_type}-policies" --"${entity_type}-name" "$entity_name" | jq -r '.AttachedPolicies[] | .PolicyName + " " + .PolicyArn')
+attached_policies=$(aws --profile "$profile" --region $region iam "list-attached-${entity_type}-policies" --"${entity_type}-name" "$entity_name" | jq -r '.AttachedPolicies[] | .PolicyName + " " + .PolicyArn')
 echo "$attached_policies"
 echo "====================="
 echo ""
@@ -103,8 +111,8 @@ echo ""
 printf "$attached_policies" | while read -r policy; do
   policy_name=$(echo "$policy" | cut -d ' ' -f1)
   policy_arn=$(echo "$policy" | cut -d ' ' -f2)
-  version_id=$(aws --profile $profile iam get-policy --policy-arn $policy_arn | jq -r '.Policy.DefaultVersionId')
-  policy_document=$(aws --profile "$profile" iam get-policy-version --policy-arn "$policy_arn" --version-id "$version_id")
+  version_id=$(aws --profile $profile --region $region iam get-policy --policy-arn $policy_arn | jq -r '.Policy.DefaultVersionId')
+  policy_document=$(aws --profile "$profile" --region $region iam get-policy-version --policy-arn "$policy_arn" --version-id "$version_id")
   
   if [ $? -eq 0 ]; then
     echo -e "  ${GREEN}Policy Name:${RESET} $policy_name"
@@ -118,14 +126,14 @@ echo ""
 
 # Get inline policies
 echo -e "${YELLOW}Inline Policies${RESET}"
-inline_policies=$(aws --profile "$profile" iam "list-${entity_type}-policies" --"${entity_type}-name" "$entity_name" | jq -r '.PolicyNames[]')
+inline_policies=$(aws --profile "$profile" --region $region iam "list-${entity_type}-policies" --"${entity_type}-name" "$entity_name" | jq -r '.PolicyNames[]')
 echo "$inline_policies"
 echo "====================="
 echo ""
 
 # Get policy documents for inline policies
 printf "$inline_policies" | while read -r policy; do
-  policy_document=$(aws --profile "$profile" iam "get-${entity_type}-policy" --"${entity_type}-name" "$entity_name" --policy-name "$policy")
+  policy_document=$(aws --profile "$profile" --region $region iam "get-${entity_type}-policy" --"${entity_type}-name" "$entity_name" --policy-name "$policy")
   if [ $? -eq 0 ]; then
     echo -e "  ${GREEN}Policy Name:${RESET} $policy"
     echo -e "  ${GREEN}Policy Document:${RESET}"
@@ -138,7 +146,7 @@ echo ""
 
 if [ "$entity_type" == "user" ]; then
   # Get the groups the user belongs to
-  groups=$(aws --profile "$profile" iam list-groups-for-user --user-name "$entity_name" | jq -r '.Groups[].GroupName')
+  groups=$(aws --profile "$profile" --region $region iam list-groups-for-user --user-name "$entity_name" | jq -r '.Groups[].GroupName')
   echo -e "${YELLOW}Groups${RESET}"
   echo "$groups"
 
@@ -146,7 +154,7 @@ if [ "$entity_type" == "user" ]; then
   # Get the policies attached to the groups
   printf "$groups" | while read -r group; do
     echo -e "  ${GREEN}Group:${RESET} $group"
-    group_attached_policies=$(aws --profile "$profile" iam list-attached-group-policies --group-name "$group" | jq -r '.AttachedPolicies[] | .PolicyName + " " + .PolicyArn')
+    group_attached_policies=$(aws --profile "$profile" --region $region iam list-attached-group-policies --group-name "$group" | jq -r '.AttachedPolicies[] | .PolicyName + " " + .PolicyArn')
     echo -e "  ${YELLOW}Attached Policies:${RESET}"
     echo "$group_attached_policies"
 
@@ -154,7 +162,7 @@ if [ "$entity_type" == "user" ]; then
     printf "$group_attached_policies" | while read -r policy; do
       policy_name=$(echo "$policy" | cut -d ' ' -f1)
       policy_arn=$(echo "$policy" | cut -d ' ' -f2)
-      policy_document=$(aws --profile "$profile" iam get-policy-version --policy-arn "$policy_arn" --version-id "$(aws --profile "$profile" iam get-policy --policy-arn "$policy_arn" | jq -r '.Policy.DefaultVersionId')")
+      policy_document=$(aws --profile "$profile" --region $region iam get-policy-version --policy-arn "$policy_arn" --version-id "$(aws --profile "$profile" --region $region iam get-policy --policy-arn "$policy_arn" | jq -r '.Policy.DefaultVersionId')")
       if [ $? -eq 0 ]; then
         echo -e "    ${GREEN}Policy Name:${RESET} $policy_name"
         echo -e "    ${GREEN}Policy Document:${RESET}"
@@ -164,13 +172,13 @@ if [ "$entity_type" == "user" ]; then
     done
 
     # Get inline policies of the groups
-    group_inline_policies=$(aws --profile "$profile" iam list-group-policies --group-name "$group" | jq -r '.PolicyNames[]')
+    group_inline_policies=$(aws --profile "$profile" --region $region iam list-group-policies --group-name "$group" | jq -r '.PolicyNames[]')
     echo -e "${YELLOW}Inline Policies:${RESET}"
     echo "$group_inline_policies"
 
     # Get policy documents for inline group policies
     for policy in $group_inline_policies; do
-      policy_document=$(aws --profile "$profile" iam get-group-policy --group-name "$group" --policy-name "$policy")
+      policy_document=$(aws --profile "$profile" --region $region iam get-group-policy --group-name "$group" --policy-name "$policy")
       if [ $? -eq 0 ]; then
         echo "${GREEN}Policy Name:${RESET} $policy"
         echo "${GREEN}Policy Document:${RESET}"
@@ -187,7 +195,7 @@ echo ""
 # Check for simulate permissions
 echo -e "${YELLOW}Checking for simulate permissions...${RESET}"
 
-CURRENT_ARN=$(aws sts get-caller-identity --query "Arn" --output text --profile $profile)
+CURRENT_ARN=$(aws sts get-caller-identity --query "Arn" --output text --profile $profile --region $region)
 
 if echo $CURRENT_ARN | grep -q "assumed-role"; then
   CURRENT_ARN=${CURRENT_ARN//:sts::/:iam::}
@@ -195,7 +203,7 @@ if echo $CURRENT_ARN | grep -q "assumed-role"; then
   CURRENT_ARN=${CURRENT_ARN%/*}
 fi
 
-echo "arn: $CURRENT_ARN"
+echo "Current arn: $CURRENT_ARN"
 
 aws iam simulate-principal-policy \
     --policy-source-arn "$CURRENT_ARN" \
@@ -300,7 +308,7 @@ test_command_param(){
   command=$2
   extra=$3
 
-  output=$(timeout 20 aws --cli-connect-timeout 19 --profile $profile $service $command $extra 2>&1)
+  output=$(timeout 20 aws --cli-connect-timeout 19 --profile $profile --region $region $service $command $extra 2>&1)
 
   if echo "$output" | grep -qi 'only alphanumeric characters'; then
     echo -n "only alphanumeric characters"
@@ -313,14 +321,14 @@ test_command() {
   extra=$3
 
   echo -ne "\033[2K\r" # Clean previous echo
-  testing_cmd=$(trim_string_to_fit_line "Testing: aws --profile $profile $service $command $extra")
+  testing_cmd=$(trim_string_to_fit_line "Testing: aws --profile $profile --region $region $service $command $extra")
   echo -ne "$testing_cmd\r"
 
-  output=$(timeout 20 aws --cli-connect-timeout 19 --profile $profile $service $command $extra 2>&1)
+  output=$(timeout 20 aws --cli-connect-timeout 19 --profile $profile --region $region $service $command $extra 2>&1)
 
   if [ $? -eq 0 ]; then
 
-    echo -e "\033[2K\r${YELLOW}[+]${RESET} You have permissions for: ${GREEN}$service $command ${BLUE}(aws --profile $profile $service $command $extra)${RESET}"
+    echo -e "\033[2K\r${YELLOW}[+]${RESET} You have permissions for: ${GREEN}$service $command ${BLUE}(aws --profile $profile --region $region $service $command $extra)${RESET}"
     echo "$service $command" >> $file_path
     if [ "$verbose" ]; then
       echo "$output"
@@ -350,7 +358,7 @@ test_command() {
   
   # If NoSuchEntity, you have permissions
   elif echo "$output" | grep -qi 'NoSuchEntity'; then
-    echo -e "\033[2K\r${YELLOW}[+]${RESET} You have permissions for: ${GREEN}$service $command ${BLUE}(aws --profile $profile $service $command $extra)${RESET}"
+    echo -e "\033[2K\r${YELLOW}[+]${RESET} You have permissions for: ${GREEN}$service $command ${BLUE}(aws --profile $profile --region $region $service $command $extra)${RESET}"
     echo "$service $command" >> $file_path
     if [ "$verbose" ]; then
       echo "$output"
@@ -360,7 +368,7 @@ test_command() {
   # The difference is that the first one is generated by XML-Based APIs and the second one is generated by JSON-Based APIs.
   # THEREFORE THIS IS NOT USEFUL
   #elif echo "$output" | grep -qi 'AccessDeniedException'; then
-  #  echo -e "${YELLOW}[+]${RESET} You migh have permissions for: ${GREEN}$service $command ${BLUE}(aws --profile $profile $service $command $extra)${RESET}"
+  #  echo -e "${YELLOW}[+]${RESET} You migh have permissions for: ${GREEN}$service $command ${BLUE}(aws --profile $profile --region $region $service $command $extra)${RESET}"
   #  echo "$service $command (might)" >> $file_path
   #  if [ "$verbose" ]; then
   #    echo "$output"
