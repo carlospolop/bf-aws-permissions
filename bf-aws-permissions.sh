@@ -26,18 +26,20 @@ profile=""
 region=""
 verbose=""
 service=""
+debug=""
 sleep_time="0.3"
 
 HELP_MESSAGE="Usage: $0 [-p profile] [-v] [-s <service>]\n"\
 "-p PROFILE: Specify the profile to use (required)\n"\
 "-r REGION: Specify a region, if you have no clue use 'us-east-1' (required)\n"\
 "-v for Verbose: Get the output of working commands\n"\
+"-d for Debug: Get why some commands are failing\n"\
 "-s SERVICE: Only BF this service\n"\
 "-t SLEEP_TIME: Time to sleep between each BF attempt (default: 0.3)\n"\
 "IMPORTANT: Set the region in the profile you want to test."
 
 # Parse the command-line options
-while getopts ":p:hvs:r:t:" opt; do
+while getopts ":p:hvs:r:t:d" opt; do
   case ${opt} in
     h )
       echo -e "$HELP_MESSAGE"
@@ -51,6 +53,9 @@ while getopts ":p:hvs:r:t:" opt; do
       ;;
     v )
       verbose="1"
+      ;;
+    d )
+      debug="1"
       ;;
     s )
       service=$OPTARG
@@ -339,6 +344,30 @@ test_command() {
       echo "$output"
     fi
   
+  elif echo "$output" | grep -Eq "ValidationException|ValidationError"; then
+    if [ "$debug" ]; then
+      echo -e "\033[2K\r${RED}[-] (Name Validation Error) Could not check:${RESET} aws --profile $profile --region $region $service $command $extra"
+    fi
+    return
+  
+  elif echo "$output" | grep -Eq "InvalidArnException|InvalidRequestException|InvalidParameterValueException|InvalidARNFault|Invalid ARN|InvalidIpamScopeId.Malformed|InvalidParameterException|invalid literal for"; then
+    if [ "$debug" ]; then
+      echo -e "\033[2K\r${RED}[-] (Invalid Resource) Could not check:${RESET} aws --profile $profile --region $region $service $command $extra"
+    fi
+    return
+  
+  elif echo "$output" | grep -Eq "Could not connect to the endpoint URL"; then
+    if [ "$debug" ]; then
+      echo -e "\033[2K\r${RED}[-] (Could Not Connect To URL) Could not check:${RESET} aws --profile $profile --region $region $service $command $extra"
+    fi
+    return
+  
+  elif echo "$output" | grep -Eq "Unknown options|MissingParameter|InvalidInputException|error: argument"; then
+    if [ "$debug" ]; then
+      echo -e "\033[2K\r${RED}[-] Options weren't properly generated:${RESET} aws --profile $profile --region $region $service $command $extra"
+    fi
+    return
+
   # Check if 1 argument is required
   elif echo "$output" | grep -q 'arguments are required'; then
     required_arg=$(echo "$output" | grep -E -o 'arguments are required: [^[:space:],]+' | awk '{print $NF}')
@@ -346,23 +375,23 @@ test_command() {
     if [ "$required_arg" ]; then
       name_string="OrganizationAccountAccessRole"
       arn_string="arn:aws:iam::$account_id:role/OrganizationAccountAccessRole"
-      extra_test="$extra $required_arg $arn_string"
+      extra_test="$extra $required_arg $name_string"
       
       test_cp=$(test_command_param "$service" "$command" "$extra_test")
-      if [ "$test_cp" == "only alphanumeric characters" ]; then
-        extra="$extra $required_arg $name_string"
-      else
+      if echo "$test_cp" | grep -Eq "ValidationException|ValidationError|InvalidArnException|InvalidRequestException|InvalidParameterValueException|InvalidARNFault|Invalid ARN|InvalidIpamScopeId.Malformed|InvalidParameterException|invalid literal for"; then
         extra="$extra $required_arg $arn_string"
+      else
+        extra="$extra $required_arg $name_string"
       fi
 
       test_command "$service" "$command" "$extra"
     fi
   
-  elif echo "$output" | grep -iq 'AccessDenied'; then
+  elif echo "$output" | grep -iEq 'AccessDenied|ForbiddenException|UnauthorizedOperation|UnsupportedCommandException|AuthorizationException'; then
     return
   
   # If NoSuchEntity, you have permissions
-  elif echo "$output" | grep -qi 'NoSuchEntity'; then
+  elif echo "$output" | grep -qi 'NoSuchEntity|ResourceNotFoundException|NotFoundException'; then
     echo -e "\033[2K\r${YELLOW}[+]${RESET} You have permissions for: ${GREEN}$service $command ${BLUE}(aws --profile $profile --region $region $service $command $extra)${RESET}"
     echo "$service $command" >> $file_path
     if [ "$verbose" ]; then
@@ -378,6 +407,12 @@ test_command() {
   #  if [ "$verbose" ]; then
   #    echo "$output"
   #  fi
+
+  else
+    if [ "$debug" ]; then
+      echo -e "\033[2K\r${RED}[-] Could not check${RESET} aws --profile $profile --region $region $service $command $extra"
+    fi
+    return
   fi
 }
 
