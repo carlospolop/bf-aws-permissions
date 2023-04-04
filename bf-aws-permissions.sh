@@ -84,6 +84,12 @@ if [ -z "$profile" ] || [ -z "$region" ]; then
     exit 1
 fi
 
+if ! [ "$(command -v timeout)" ]; then
+    echo -e "${RED}Command timeout not installed. It's required.${RESET}"
+    echo ""
+    exit 1
+fi
+
 # Some extra configs
 file_path="/tmp/$profile-aws-permissions.txt"
 rm $file_path 2>/dev/null
