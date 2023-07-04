@@ -264,7 +264,7 @@ get_aws_services(){
 			in_range=false
 		fi
 
-		if [[ $in_range == true ]] && [[ "$line" != *"$point"* ]] && echo "$line" | grep -aqv "SERVICES"; then
+		if [[ $in_range == true ]] && echo -n "$line" | grep -qvE "^${point}$" && echo "$line" | grep -aqv "SERVICES"; then
       # We're in the target range, so echo the line
       
       if [ "$service" ]; then
