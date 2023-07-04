@@ -211,7 +211,7 @@ echo ""
 # Check for simulate permissions
 echo -e "${YELLOW}Checking for simulate permissions...${RESET}"
 
-CURRENT_ARN=$(aws sts get-caller-identity --query "Arn" --output text --profile $profile --region $region)
+CURRENT_ARN=$(aws --profile "$profile" --region $region sts get-caller-identity --query "Arn" --output text)
 
 if echo $CURRENT_ARN | grep -q "assumed-role"; then
   CURRENT_ARN=${CURRENT_ARN//:sts::/:iam::}
@@ -221,7 +221,7 @@ fi
 
 echo "Current arn: $CURRENT_ARN"
 
-aws iam simulate-principal-policy \
+aws iam simulate-principal-policy --profile "$profile" --region $region \
     --policy-source-arn "$CURRENT_ARN" \
     --action-names iam:SimulatePrincipalPolicy \
     --region $region --profile $profile
