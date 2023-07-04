@@ -223,7 +223,9 @@ echo "Current arn: $CURRENT_ARN"
 
 aws iam simulate-principal-policy \
     --policy-source-arn "$CURRENT_ARN" \
-    --action-names codecommit:SimulatePrincipalPolicy
+    --action-names iam:SimulatePrincipalPolicy \
+    --region $region --profile $profile
+
   
 if [ $? -eq 0 ]; then
   echo -e "${GREEN}You have simulate permissions!${RESET} Check: ${BLUE}https://github.com/carlospolop/bf-aws-perms-simulate${RESET}"
