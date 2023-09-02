@@ -29,7 +29,7 @@ service=""
 debug=""
 sleep_time="0.3"
 
-HELP_MESSAGE="Usage: $0 [-p profile] [-v] [-s <service>]\n"\
+HELP_MESSAGE="Usage: $0 -p profile -r region [-v] [-s <service>]\n"\
 "-p PROFILE: Specify the profile to use (required)\n"\
 "-r REGION: Specify a region, if you have no clue use 'us-east-1' (required)\n"\
 "-v for Verbose: Get the output of working commands\n"\
