@@ -17,4 +17,8 @@ This can have false negatives, but it's the **easiest approach to check want you
 bash bf-aws-permissions.sh -p "<profile-name>" -r <region>
 # BF only the 10 services most used according to GPT4
 bash bf-aws-permissions.sh -p "<profile-name>" -r us-east-1 -s 's3|ec2|lambda|rds|sns|sqs|cloudwatch|cloudfront|iam|dynamodb'
+
+# For temp creds use:
+aws configure set aws_session_token <token>
 ```
+
