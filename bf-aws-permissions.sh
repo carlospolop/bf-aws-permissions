@@ -28,6 +28,7 @@ verbose=""
 service=""
 debug=""
 sleep_time="0.3"
+direct_bf=""
 
 HELP_MESSAGE="Usage: $0 -p profile -r region [-v] [-s <service>]\n"\
 "-p PROFILE: Specify the profile to use (required)\n"\
@@ -36,10 +37,10 @@ HELP_MESSAGE="Usage: $0 -p profile -r region [-v] [-s <service>]\n"\
 "-d for Debug: Get why some commands are failing\n"\
 "-s SERVICE: Only BF this service\n"\
 "-t SLEEP_TIME: Time to sleep between each BF attempt (default: 0.3)\n"\
-"IMPORTANT: Set the region in the profile you want to test."
+"-b: Skip initial checks and go straight to brute-forcing\n"
 
 # Parse the command-line options
-while getopts ":p:hvs:r:t:d" opt; do
+while getopts ":p:hvs:r:t:db" opt; do
   case ${opt} in
     h )
       echo -e "$HELP_MESSAGE"
@@ -56,6 +57,9 @@ while getopts ":p:hvs:r:t:d" opt; do
       ;;
     d )
       debug="1"
+      ;;
+    b )
+      direct_bf="1"
       ;;
     s )
       service=$OPTARG
@@ -98,149 +102,154 @@ if ! [ "$account_id" ]; then
   account_id="112233445566"
 fi
 
-##########################
-###### QUERING IAM #######
-##########################
 
-caller_identity=$(aws --profile "$profile" --region $region sts get-caller-identity)
 
-# Check if the current profile is a user or a role
-if echo "$caller_identity" | grep -q "assumed-role"; then
-  entity_type="role"
-  entity_name=$(echo "$caller_identity" | jq -r '.Arn' | awk -F '/' '{print $2}')
-else
-  entity_type="user"
-  entity_name=$(echo "$caller_identity" | jq -r '.Arn' | awk -F '/' '{print $NF}')
-fi
 
-echo -e "${YELLOW}Entity Type:${RESET} $entity_type"
-echo -e "${YELLOW}Entity Name:${RESET} $entity_name"
+if ! [ "$direct_bf" ]; then
+  ##########################
+  ###### QUERING IAM #######
+  ##########################
 
-# Get attached policies
-echo -e "${YELLOW}Attached Policies${RESET}"
-attached_policies=$(aws --profile "$profile" --region $region iam "list-attached-${entity_type}-policies" --"${entity_type}-name" "$entity_name" | jq -r '.AttachedPolicies[] | .PolicyName + " " + .PolicyArn')
-echo "$attached_policies"
-echo "====================="
-echo ""
+  caller_identity=$(aws --profile "$profile" --region $region sts get-caller-identity)
 
-# Get policy documents for attached policies
-printf "$attached_policies" | while read -r policy; do
-  policy_name=$(echo "$policy" | cut -d ' ' -f1)
-  policy_arn=$(echo "$policy" | cut -d ' ' -f2)
-  version_id=$(aws --profile $profile --region $region iam get-policy --policy-arn $policy_arn | jq -r '.Policy.DefaultVersionId')
-  policy_document=$(aws --profile "$profile" --region $region iam get-policy-version --policy-arn "$policy_arn" --version-id "$version_id")
-  
-  if [ $? -eq 0 ]; then
-    echo -e "  ${GREEN}Policy Name:${RESET} $policy_name"
-    echo -e "  ${GREEN}Policy Document:${RESET}"
-    echo "$policy_document" | jq '.PolicyVersion.Document'
-    echo "---------------------"
+  # Check if the current profile is a user or a role
+  if echo "$caller_identity" | grep -q "assumed-role"; then
+    entity_type="role"
+    entity_name=$(echo "$caller_identity" | jq -r '.Arn' | awk -F '/' '{print $2}')
+  else
+    entity_type="user"
+    entity_name=$(echo "$caller_identity" | jq -r '.Arn' | awk -F '/' '{print $NF}')
   fi
-done
-echo ""
 
+  echo -e "${YELLOW}Entity Type:${RESET} $entity_type"
+  echo -e "${YELLOW}Entity Name:${RESET} $entity_name"
 
-# Get inline policies
-echo -e "${YELLOW}Inline Policies${RESET}"
-inline_policies=$(aws --profile "$profile" --region $region iam "list-${entity_type}-policies" --"${entity_type}-name" "$entity_name" | jq -r '.PolicyNames[]')
-echo "$inline_policies"
-echo "====================="
-echo ""
+  # Get attached policies
+  echo -e "${YELLOW}Attached Policies${RESET}"
+  attached_policies=$(aws --profile "$profile" --region $region iam "list-attached-${entity_type}-policies" --"${entity_type}-name" "$entity_name" | jq -r '.AttachedPolicies[] | .PolicyName + " " + .PolicyArn')
+  echo "$attached_policies"
+  echo "====================="
+  echo ""
 
-# Get policy documents for inline policies
-printf "$inline_policies" | while read -r policy; do
-  policy_document=$(aws --profile "$profile" --region $region iam "get-${entity_type}-policy" --"${entity_type}-name" "$entity_name" --policy-name "$policy")
-  if [ $? -eq 0 ]; then
-    echo -e "  ${GREEN}Policy Name:${RESET} $policy"
-    echo -e "  ${GREEN}Policy Document:${RESET}"
-    echo "$policy_document" | jq '.PolicyDocument'
-    echo "---------------------"
-  fi
-done
-echo ""
-
-
-if [ "$entity_type" == "user" ]; then
-  # Get the groups the user belongs to
-  groups=$(aws --profile "$profile" --region $region iam list-groups-for-user --user-name "$entity_name" | jq -r '.Groups[].GroupName')
-  echo -e "${YELLOW}Groups${RESET}"
-  echo "$groups"
-
-
-  # Get the policies attached to the groups
-  printf "$groups" | while read -r group; do
-    echo -e "  ${GREEN}Group:${RESET} $group"
-    group_attached_policies=$(aws --profile "$profile" --region $region iam list-attached-group-policies --group-name "$group" | jq -r '.AttachedPolicies[] | .PolicyName + " " + .PolicyArn')
-    echo -e "  ${YELLOW}Attached Policies:${RESET}"
-    echo "$group_attached_policies"
-
-    # Get policy documents for attached group policies
-    printf "$group_attached_policies" | while read -r policy; do
-      policy_name=$(echo "$policy" | cut -d ' ' -f1)
-      policy_arn=$(echo "$policy" | cut -d ' ' -f2)
-      policy_document=$(aws --profile "$profile" --region $region iam get-policy-version --policy-arn "$policy_arn" --version-id "$(aws --profile "$profile" --region $region iam get-policy --policy-arn "$policy_arn" | jq -r '.Policy.DefaultVersionId')")
-      if [ $? -eq 0 ]; then
-        echo -e "    ${GREEN}Policy Name:${RESET} $policy_name"
-        echo -e "    ${GREEN}Policy Document:${RESET}"
-        echo "$policy_document" | jq '.PolicyVersion.Document'
-        echo "---------------------"
-      fi
-    done
-
-    # Get inline policies of the groups
-    group_inline_policies=$(aws --profile "$profile" --region $region iam list-group-policies --group-name "$group" | jq -r '.PolicyNames[]')
-    echo -e "${YELLOW}Inline Policies:${RESET}"
-    echo "$group_inline_policies"
-
-    # Get policy documents for inline group policies
-    for policy in $group_inline_policies; do
-      policy_document=$(aws --profile "$profile" --region $region iam get-group-policy --group-name "$group" --policy-name "$policy")
-      if [ $? -eq 0 ]; then
-        echo "${GREEN}Policy Name:${RESET} $policy"
-        echo "${GREEN}Policy Document:${RESET}"
-        echo "$policy_document" | jq '.PolicyDocument'
-        echo "---------------------"
-      fi
-    done
+  # Get policy documents for attached policies
+  printf "$attached_policies" | while read -r policy; do
+    policy_name=$(echo "$policy" | cut -d ' ' -f1)
+    policy_arn=$(echo "$policy" | cut -d ' ' -f2)
+    version_id=$(aws --profile $profile --region $region iam get-policy --policy-arn $policy_arn | jq -r '.Policy.DefaultVersionId')
+    policy_document=$(aws --profile "$profile" --region $region iam get-policy-version --policy-arn "$policy_arn" --version-id "$version_id")
+    
+    if [ $? -eq 0 ]; then
+      echo -e "  ${GREEN}Policy Name:${RESET} $policy_name"
+      echo -e "  ${GREEN}Policy Document:${RESET}"
+      echo "$policy_document" | jq '.PolicyVersion.Document'
+      echo "---------------------"
+    fi
   done
-fi
-
-echo ""
+  echo ""
 
 
-# Check for simulate permissions
-echo -e "${YELLOW}Checking for simulate permissions...${RESET}"
+  # Get inline policies
+  echo -e "${YELLOW}Inline Policies${RESET}"
+  inline_policies=$(aws --profile "$profile" --region $region iam "list-${entity_type}-policies" --"${entity_type}-name" "$entity_name" | jq -r '.PolicyNames[]')
+  echo "$inline_policies"
+  echo "====================="
+  echo ""
 
-CURRENT_ARN=$(aws --profile "$profile" --region $region sts get-caller-identity --query "Arn" --output text)
-
-if echo $CURRENT_ARN | grep -q "assumed-role"; then
-  CURRENT_ARN=${CURRENT_ARN//:sts::/:iam::}
-  CURRENT_ARN=${CURRENT_ARN//:assumed-role/:role}
-  CURRENT_ARN=${CURRENT_ARN%/*}
-fi
-
-echo "Current arn: $CURRENT_ARN"
-
-aws iam simulate-principal-policy --profile "$profile" --region $region \
-    --policy-source-arn "$CURRENT_ARN" \
-    --action-names iam:SimulatePrincipalPolicy \
-    --region $region --profile $profile
-
-  
-if [ $? -eq 0 ]; then
-  echo -e "${GREEN}You have simulate permissions!${RESET} Check: ${BLUE}https://github.com/carlospolop/bf-aws-perms-simulate${RESET}"
-else
-  echo -e "${RED}You don't have simulate permissions!${RESET}"
-fi
-echo ""
-echo ""
+  # Get policy documents for inline policies
+  printf "$inline_policies" | while read -r policy; do
+    policy_document=$(aws --profile "$profile" --region $region iam "get-${entity_type}-policy" --"${entity_type}-name" "$entity_name" --policy-name "$policy")
+    if [ $? -eq 0 ]; then
+      echo -e "  ${GREEN}Policy Name:${RESET} $policy"
+      echo -e "  ${GREEN}Policy Document:${RESET}"
+      echo "$policy_document" | jq '.PolicyDocument'
+      echo "---------------------"
+    fi
+  done
+  echo ""
 
 
-# Check for Brute Forcing
-read -p "Do you want to continue with brute-forcing? (y/N): " user_choice
-if [[ ! "$user_choice" =~ ^[Yy]$ ]]; then
-    echo "Aborting brute-forcing."
-    exit 0
+  if [ "$entity_type" == "user" ]; then
+    # Get the groups the user belongs to
+    groups=$(aws --profile "$profile" --region $region iam list-groups-for-user --user-name "$entity_name" | jq -r '.Groups[].GroupName')
+    echo -e "${YELLOW}Groups${RESET}"
+    echo "$groups"
+
+
+    # Get the policies attached to the groups
+    printf "$groups" | while read -r group; do
+      echo -e "  ${GREEN}Group:${RESET} $group"
+      group_attached_policies=$(aws --profile "$profile" --region $region iam list-attached-group-policies --group-name "$group" | jq -r '.AttachedPolicies[] | .PolicyName + " " + .PolicyArn')
+      echo -e "  ${YELLOW}Attached Policies:${RESET}"
+      echo "$group_attached_policies"
+
+      # Get policy documents for attached group policies
+      printf "$group_attached_policies" | while read -r policy; do
+        policy_name=$(echo "$policy" | cut -d ' ' -f1)
+        policy_arn=$(echo "$policy" | cut -d ' ' -f2)
+        policy_document=$(aws --profile "$profile" --region $region iam get-policy-version --policy-arn "$policy_arn" --version-id "$(aws --profile "$profile" --region $region iam get-policy --policy-arn "$policy_arn" | jq -r '.Policy.DefaultVersionId')")
+        if [ $? -eq 0 ]; then
+          echo -e "    ${GREEN}Policy Name:${RESET} $policy_name"
+          echo -e "    ${GREEN}Policy Document:${RESET}"
+          echo "$policy_document" | jq '.PolicyVersion.Document'
+          echo "---------------------"
+        fi
+      done
+
+      # Get inline policies of the groups
+      group_inline_policies=$(aws --profile "$profile" --region $region iam list-group-policies --group-name "$group" | jq -r '.PolicyNames[]')
+      echo -e "${YELLOW}Inline Policies:${RESET}"
+      echo "$group_inline_policies"
+
+      # Get policy documents for inline group policies
+      for policy in $group_inline_policies; do
+        policy_document=$(aws --profile "$profile" --region $region iam get-group-policy --group-name "$group" --policy-name "$policy")
+        if [ $? -eq 0 ]; then
+          echo "${GREEN}Policy Name:${RESET} $policy"
+          echo "${GREEN}Policy Document:${RESET}"
+          echo "$policy_document" | jq '.PolicyDocument'
+          echo "---------------------"
+        fi
+      done
+    done
+  fi
+
+  echo ""
+
+
+  # Check for simulate permissions
+  echo -e "${YELLOW}Checking for simulate permissions...${RESET}"
+
+  CURRENT_ARN=$(aws --profile "$profile" --region $region sts get-caller-identity --query "Arn" --output text)
+
+  if echo $CURRENT_ARN | grep -q "assumed-role"; then
+    CURRENT_ARN=${CURRENT_ARN//:sts::/:iam::}
+    CURRENT_ARN=${CURRENT_ARN//:assumed-role/:role}
+    CURRENT_ARN=${CURRENT_ARN%/*}
+  fi
+
+  echo "Current arn: $CURRENT_ARN"
+
+  aws iam simulate-principal-policy --profile "$profile" --region $region \
+      --policy-source-arn "$CURRENT_ARN" \
+      --action-names iam:SimulatePrincipalPolicy \
+      --region $region --profile $profile
+
+    
+  if [ $? -eq 0 ]; then
+    echo -e "${GREEN}You have simulate permissions!${RESET} Check: ${BLUE}https://github.com/carlospolop/bf-aws-perms-simulate${RESET}"
+  else
+    echo -e "${RED}You don't have simulate permissions!${RESET}"
+  fi
+  echo ""
+  echo ""
+
+
+  # Check for Brute Forcing
+  read -p "Do you want to continue with brute-forcing? (Y/n): " user_choice
+  if [[ "$user_choice" =~ ^[Nn]$ ]]; then
+      echo "Aborting brute-forcing."
+      exit 0
+  fi
 fi
 
 ##########################
