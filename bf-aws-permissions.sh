@@ -96,7 +96,8 @@ fi
 
 # Some extra configs
 file_path="/tmp/$profile-aws-permissions.txt"
-rm $file_path 2>/dev/null
+file_path_permissions="/tmp/$profile-aws-permissions-permissions.txt"
+rm $file_path $file_path_permissions 2>/dev/null
 account_id=$(aws sts get-caller-identity --query 'Account' --output text --profile $profile --region $region)
 if ! [ "$account_id" ]; then
   account_id="112233445566"
@@ -486,6 +487,7 @@ test_command() {
 
     echo -e "\033[2K\r${YELLOW}[+]${RESET} You can: ${GREEN}$service $command ${BLUE}(aws --profile $profile --region $region $service $command $extra)${RESET} (${YELLOW}$permission${RESET})"
     echo "$service $command" >> $file_path
+    echo "$permission" >> $file_path_permissions
     if [ "$verbose" ]; then
       echo "$output"
     fi
@@ -547,6 +549,7 @@ test_command() {
 
     echo -e "\033[2K\r${YELLOW}[+]${RESET} You can: ${GREEN}$service $command ${BLUE}(aws --profile $profile --region $region $service $command $extra)${RESET}($permission)"
     echo "$service $command" >> $file_path
+    echo "$permission" >> $file_path_permissions
     if [ "$verbose" ]; then
       echo "$output"
     fi
@@ -581,6 +584,7 @@ done
 wait
 echo -ne "\033[2K\r"
 echo ""
-echo -e "${YELLOW}[+]${GREEN} Summary of permissions in ${CYAN}$file_path${RESET}"
+echo -e "${YELLOW}[+]${GREEN} Summary of allowed actions in ${CYAN}$file_path${RESET}"
+echo -e "${YELLOW}[+]${GREEN} Summary of allowed permissions in ${CYAN}$file_path_permissions${RESET}"
 echo ""
 echo -e "${YELLOW}Now try the tool https://github.com/carlospolop/aws-Perms2ManagedPolicies to guess even more permissions you might have${RESET}"
