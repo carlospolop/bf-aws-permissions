@@ -24,7 +24,11 @@ bash bf-aws-permissions.sh -p "<profile-name>" -r us-east-1 -s 's3|ec2|lambda|rd
 aws configure set aws_session_token <token>
 ```
 
-## Known "False Positives"
+## Find even more permissions
+
+Once you have bruteforced you permissions **check the tool https://github.com/carlospolop/aws-Perms2ManagedPolicies to try to guess more permissions you might have** if your principal is being granted permissions using AWS managed policies.
+
+### Known "False Positives"
 
 <details>
 <summary>User/Role without any permissions</summary>
@@ -50,6 +54,8 @@ This tool detect as valid the following actions using a user/role without any pe
 - `aws sts get-session-token` (only if a user, not a role)
 
 </details>
+
+### All actions it can detect
 
 <details>
 <summary>User/Role with Administrator permissions</summary>
