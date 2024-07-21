@@ -252,6 +252,130 @@ if ! [ "$direct_bf" ]; then
   fi
 fi
 
+
+##########################
+#### TRANSFORM COMMAND ###
+##########################
+transform_command() {
+  echo $1 | \
+  sed 's/accessanalizer/access-analyzer/g' | \
+  sed 's/amp:/aps:/g' | \
+  sed 's/apigateway:Get.*/apigateway:GET/g' | \
+  sed 's/apigatewayv2:Get.*/apigateway:GET/g' | \
+  sed 's/appintegrations:/app-integrations:/g' | \
+  sed 's/application-insights:/applicationinsights:/g' | \
+  sed 's/athena:ListApplicationDpuSizes/athena:ListApplicationDPUSizes/g' | \
+  sed 's/chime-.*:/chime:/g' | \
+  sed 's/cloudcontrol:/cloudformation:/g' | \
+  sed 's/cloudfront:ListDistributionsByWebAclId/cloudfront:ListDistributionsByWebACLId/g' | \
+  sed 's/cloudhsmv2:/cloudhsm:/g' | \
+  sed 's/codeguruprofiler:/codeguru-profiler:/g' | \
+  sed 's/comprehendmedical:ListIcd10CmInferenceJobs/comprehendmedical:ListICD10CMInferenceJobs/g' | \
+  sed 's/comprehendmedical:ListPhiDetectionJobs/comprehendmedical:ListPHIDetectionJobs/g' | \
+  sed 's/comprehendmedical:ListSnomedctInferenceJobs/comprehendmedical:ListSNOMEDCTInferenceJobs/g' | \
+  sed 's/configservice:/config:/g' | \
+  sed 's/connectcampaigns:/connect-campaigns:/g' | \
+  sed 's/connectcases:/cases:/g' | \
+  sed 's/customer-profiles:/profile:/g' | \
+  sed 's/deploy:/codeploy:/g' | \
+  sed 's/detective:ListOrganizationAdminAccounts/detective:ListOrganizationAdminAccount/g' | \
+  sed 's/docdb:/rds:/g' | \
+  sed 's/dynamodbstreams:/dynamodb:/g' | \
+  sed 's/ecr:GetLoginPassword/ecr:GetAuthorizationToken/g' | \
+  sed 's/efs:/elasticfilesystem:/g' | \
+  sed 's/elb:/elasticloadbalancing:/g' | \
+  sed 's/elbv2/elasticloadbalancing:/g' | \
+  sed 's/emr:/elasticmapreduce:/g' | \
+  sed 's/frauddetector:GetKmsEncryptionKey/frauddetector:GetKMSEncryptionKey/g' | \
+  sed 's/gamelift:DescribeEc2InstanceLimits/gamelift:DescribeEC2InstanceLimits/g' | \
+  sed 's/glue:GetMlTransforms/glue:GetMLTransforms/g' | \
+  sed 's/glue:ListMlTransforms/glue:ListMLTransforms/g' | \
+  sed 's/greengrassv2:/greengrass:/g' | \
+  sed 's/healthlake:ListFhirDatastores/healthlake:ListFHIRDatastores/g' | \
+  sed 's/iam:ListMfaDevices/iam:ListMFADevices/g' | \
+  sed 's/iam:ListOpenIdConnectProviders/iam:ListOpenIDConnectProviders/g' | \
+  sed 's/iam:ListSamlProviders/iam:ListSAMLProviders/g' | \
+  sed 's/iam:ListSshPublicKeys/iam:ListSSHPublicKeys/g' | \
+  sed 's/iam:ListVirtualMfaDevices/iam:ListVirtualMFADevices/g' | \
+  sed 's/iot:ListCaCertificates/iot:ListCACertificates/g' | \
+  sed 's/iot:ListOtaUpdates/iot:ListOTAUpdates/g' | \
+  sed 's/iot-data:/iot:/g' | \
+  sed 's/iotsecuretunneling:/iot:/g' | \
+  sed 's/ivs-realtime:/ivs:/g' | \
+  sed 's/kinesis-video-archived-media:/kinesisvideo:/g' | \
+  sed 's/kinesis-video-signaling:/kinesisvideo:/g' | \
+  sed 's/kinesisanalyticsv2:/kinesisanalytics:/g' | \
+  sed 's/lakeformation:ListLfTags/lakeformation:ListLFTags/g' | \
+  sed 's/lex-models:/lex:/g' | \
+  sed 's/lexv2-models:/lex:/g' | \
+  sed 's/lightsail:GetContainerApiMetadata/lightsail:GetContainerAPIMetadata/g' | \
+  sed 's/location:/geo:/g' | \
+  sed 's/marketplace-entitlement:/aws-marketplace:/g' | \
+  sed 's/migration-hub-refactor-spaces:/refactor-spaces:/g' | \
+  sed 's/migrationhub-config:/mgh:/g' | \
+  sed 's/migrationhuborchestrator:/migrationhub-orchestrator:/g' | \
+  sed 's/migrationhubstrategy:/migrationhub-strategy:/g' | \
+  sed 's/mwaa:/airflow:/g' | \
+  sed 's/neptune:/rds:/g' | \
+  sed 's/network-firewall:ListTlsInspectionConfigurations/network-firewall:ListTLSInspectionConfigurations/g' | \
+  sed 's/opensearch:/es:/g' | \
+  sed 's/opensearchserverless:/aoss:/g' | \
+  sed 's/organizations:ListAwsServiceAccessForOrganization/organizations:ListAWSServiceAccessForOrganization/g' | \
+  sed 's/pinpoint:/mobiletargeting:/g' | \
+  sed 's/pinpoint-email:/ses:/g' | \
+  sed 's/pinpoint-sms-voice-v2:/sms-voice:/g' | \
+  sed 's/privatenetworks:/private-networks:/g' | \
+  sed 's/Db/DB/g' | \
+  sed 's/resourcegroupstaggingapi:/tag:/g' | \
+  sed 's/s3outposts:/s3-outposts:/g' | \
+  sed 's/sagemaker:ListAutoMlJobs/sagemaker:ListAutoMLJobs/g' | \
+  sed 's/sagemaker:ListCandidatesForAutoMlJob/sagemaker:ListCandidatesForAutoMLJob/g' | \
+  sed 's/service-quotas:/servicequotas:/g' | \
+  sed 's/servicecatalog:GetAwsOrganizationsAccessStatus/servicecatalog:GetAWSOrganizationsAccessStatus/g' | \
+  sed 's/servicecatalog-appregistry:/servicecatalog:/g' | \
+  sed 's/sesv2:/ses:/g' | \
+  sed 's/sns:GetSmsAttributes/sns:GetSMSAttributes/g' | \
+  sed 's/sns:GetSmsSandboxAccountStatus/sns:GetSMSSandboxAccountStatus/g' | \
+  sed 's/sns:ListSmsSandboxPhoneNumbers/sns:ListSMSSandboxPhoneNumbers/g' | \
+  sed 's/sso-admin:/sso:/g' | \
+  sed 's/stepfunctions:/states:/g' | \
+  sed 's/support-app:/supportapp:/g' | \
+  sed 's/timestream-query:/timestream:/g' | \
+  sed 's/timestream-write:/timestream:/g' | \
+  sed 's/voice-id:/voiceid:/g' | \
+  sed 's/waf:ListIpSets/waf:ListIPSets/g' | \
+  sed 's/waf:ListWebAcls/waf:ListWebACLs/g' | \
+  sed 's/waf-regional:ListIpSets/waf-regional:ListIPSets/g' | \
+  sed 's/waf-regional:ListWebAcls/waf-regional:ListWebACLs/g' | \
+  sed 's/keyspaces:ListKeyspaces/cassandra:Select/g' | \
+  sed 's/keyspaces:ListTables/cassandra:Select/g' | \
+  sed 's/s3api:ListBuckets/s3:ListAllMyBuckets/g' | \
+  grep -v "configure:"
+}
+
+capitalize(){
+  local input=$1
+  # Split the input based on hyphen (-)
+  IFS='-' read -r -a parts <<< "$input"
+
+  # Initialize output variable
+  output=""
+
+  # Loop over each part
+  for part in "${parts[@]}"; do
+    # Capitalize the first character and append the rest of the string
+    capitalized="${part^}"
+    # Append the capitalized part back with a hyphen
+    if [ -z "$output" ]; then
+      output="$capitalized"
+    else
+      output="$output-$capitalized"
+    fi
+  done
+
+  echo -n "$output"
+}
+
 ##########################
 ##### BRUTE FORCING ######
 ##########################
@@ -354,8 +478,13 @@ test_command() {
   output=$(timeout 20 aws --cli-connect-timeout 19 --profile $profile --region $region $service $command $extra 2>&1)
 
   if [ $? -eq 0 ]; then
+    capitalized_command=$(capitalize "$command")
+    permission_command=$(echo -n "$capitalized_command" | tr -d '-')
+    # Construct the permission with service and formatted command
+    permission="${service}:$permission_command"
+    permission=$(transform_command "$permission")
 
-    echo -e "\033[2K\r${YELLOW}[+]${RESET} You have permissions for: ${GREEN}$service $command ${BLUE}(aws --profile $profile --region $region $service $command $extra)${RESET}"
+    echo -e "\033[2K\r${YELLOW}[+]${RESET} You can: ${GREEN}$service $command ${BLUE}(aws --profile $profile --region $region $service $command $extra)${RESET} (${YELLOW}$permission${RESET})"
     echo "$service $command" >> $file_path
     if [ "$verbose" ]; then
       echo "$output"
@@ -409,7 +538,14 @@ test_command() {
   
   # If NoSuchEntity, you have permissions
   elif echo "$output" | grep -qi 'NoSuchEntity|ResourceNotFoundException|NotFoundException'; then
-    echo -e "\033[2K\r${YELLOW}[+]${RESET} You have permissions for: ${GREEN}$service $command ${BLUE}(aws --profile $profile --region $region $service $command $extra)${RESET}"
+    # Capitalize command and after "-"
+    capitalized_command=$(capitalize "$command")
+    permission_command=$(echo -n "$capitalized_command" | tr -d '-')
+    # Construct the permission with service and formatted command
+    permission="${service}:$permission_command"
+    permission=$(transform_command "$permission")
+
+    echo -e "\033[2K\r${YELLOW}[+]${RESET} You can: ${GREEN}$service $command ${BLUE}(aws --profile $profile --region $region $service $command $extra)${RESET}($permission)"
     echo "$service $command" >> $file_path
     if [ "$verbose" ]; then
       echo "$output"
@@ -447,3 +583,4 @@ echo -ne "\033[2K\r"
 echo ""
 echo -e "${YELLOW}[+]${GREEN} Summary of permissions in ${CYAN}$file_path${RESET}"
 echo ""
+echo -e "${YELLOW}Now try the tool https://github.com/carlospolop/aws-Perms2ManagedPolicies to guess even more permissions you might have${RESET}"
