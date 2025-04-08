@@ -1,3 +1,5 @@
+# Check AWSPEASS from [https://github.com/carlospolop/cloudpeass](https://github.com/carlospolop/cloudpeass) for an updated version of this script
+
 # Brute Force AWS Permissions
 
 The script will first try to **enumerate your permissions querying the IAM service**, and then give you the options to brute force permissions.
